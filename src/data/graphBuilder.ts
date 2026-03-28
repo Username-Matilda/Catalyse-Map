@@ -1,4 +1,5 @@
 import Graph from "graphology";
+import forceAtlas2 from "graphology-layout-forceatlas2";
 import { MapData, NodeType, NodeStatus } from "./types";
 
 const NODE_SIZES: Record<NodeType, number> = {
@@ -131,6 +132,79 @@ export function applyCascadeLayout(graph: Graph, data: MapData) {
     assignPositions(root, 0, currentX, rootAllocated);
     currentX += rootAllocated;
   }
+}
+
+export const TAG_COLORS: Record<string, string> = {
+  policy: "#3b82f6",
+  messaging: "#f59e0b",
+  organizing: "#22c55e",
+  labor: "#ef4444",
+  economic: "#a855f7",
+  branding: "#ec4899",
+  writing: "#14b8a6",
+  lobbying: "#6366f1",
+  research: "#06b6d4",
+  regional: "#84cc16",
+  "coalition-building": "#f97316",
+  "talent-pipeline": "#8b5cf6",
+  "proof-of-concept": "#0ea5e9",
+};
+
+// Network layout: force-directed with tag-based attraction edges
+export function applyNetworkLayout(graph: Graph, data: MapData) {
+  // Add temporary "tag hub" nodes and edges to create tag-based clustering
+  const tagGraph = graph.copy();
+  const tagHubs: string[] = [];
+
+  // Collect all tags
+  const allTags = new Set<string>();
+  for (const node of data.nodes) {
+    for (const tag of node.tags) {
+      allTags.add(tag);
+    }
+  }
+
+  // Add invisible tag hub nodes and connect tagged nodes to them
+  for (const tag of allTags) {
+    const hubId = `__tag_hub_${tag}`;
+    tagHubs.push(hubId);
+    tagGraph.addNode(hubId, { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, size: 1 });
+
+    for (const node of data.nodes) {
+      if (node.tags.includes(tag) && tagGraph.hasNode(node.id)) {
+        tagGraph.addEdge(node.id, hubId, { weight: 3 });
+      }
+    }
+  }
+
+  // Randomize starting positions
+  tagGraph.forEachNode((node) => {
+    if (!tagHubs.includes(node)) {
+      tagGraph.setNodeAttribute(node, "x", Math.random() * 100 - 50);
+      tagGraph.setNodeAttribute(node, "y", Math.random() * 100 - 50);
+    }
+  });
+
+  // Run force-directed layout on the augmented graph
+  forceAtlas2.assign(tagGraph, {
+    iterations: 200,
+    settings: {
+      gravity: 0.8,
+      scalingRatio: 12,
+      strongGravityMode: false,
+      barnesHutOptimize: true,
+      slowDown: 5,
+      edgeWeightInfluence: 1,
+    },
+  });
+
+  // Copy positions back to the real graph (skip tag hubs)
+  tagGraph.forEachNode((node, attrs) => {
+    if (!tagHubs.includes(node) && graph.hasNode(node)) {
+      graph.setNodeAttribute(node, "x", attrs.x);
+      graph.setNodeAttribute(node, "y", attrs.y);
+    }
+  });
 }
 
 export function getSubtreeNodes(nodeId: string, data: MapData): Set<string> {

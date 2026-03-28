@@ -3,11 +3,10 @@ import Graph from "graphology";
 import Sigma from "sigma";
 import { createNodeBorderProgram } from "@sigma/node-border";
 import { EdgeCurvedArrowProgram } from "@sigma/edge-curve";
-import { MapData } from "../data/types";
-import { buildGraph, applyCascadeLayout, getSubtreeNodes } from "../data/graphBuilder";
+import { MapData, ViewMode } from "../data/types";
+import { buildGraph, applyCascadeLayout, applyNetworkLayout, getSubtreeNodes } from "../data/graphBuilder";
 import Legend from "./Legend";
 
-// Custom node program with colored border ring
 const NodeBorderProg = createNodeBorderProgram({
   borders: [
     {
@@ -25,6 +24,8 @@ interface GraphViewProps {
   onSelectNode: (id: string | null) => void;
   focusedSubtree: string | null;
   onFocusSubtree: (id: string | null) => void;
+  viewMode: ViewMode;
+  highlightedTag: string | null;
 }
 
 export default function GraphView({
@@ -34,18 +35,26 @@ export default function GraphView({
   onSelectNode,
   focusedSubtree,
   onFocusSubtree,
+  viewMode,
+  highlightedTag,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<Graph | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
-  // Build and render graph
+  // Build and render graph — recreate when viewMode changes
   useEffect(() => {
     if (!containerRef.current) return;
 
     const graph = buildGraph(data);
-    applyCascadeLayout(graph, data);
+
+    if (viewMode === "cascade") {
+      applyCascadeLayout(graph, data);
+    } else {
+      applyNetworkLayout(graph, data);
+    }
+
     graphRef.current = graph;
 
     let currentHoveredNode: string | null = null;
@@ -66,7 +75,6 @@ export default function GraphView({
       labelDensity: 1.5,
       labelGridCellSize: 120,
 
-      // Register custom rendering programs
       nodeProgramClasses: {
         border: NodeBorderProg,
       },
@@ -75,7 +83,6 @@ export default function GraphView({
         curvedArrow: EdgeCurvedArrowProgram,
       },
 
-      // Node reducer: hover dimming + selection highlight
       nodeReducer: (node, attrs) => {
         const res = { ...attrs };
         const activeNode = currentHoveredNode || selectedNodeId;
@@ -103,7 +110,6 @@ export default function GraphView({
         return res;
       },
 
-      // Edge reducer: dim non-connected edges
       edgeReducer: (edge, attrs) => {
         const res = { ...attrs };
         const activeNode = currentHoveredNode || selectedNodeId;
@@ -129,9 +135,11 @@ export default function GraphView({
     });
 
     sigma.on("doubleClickNode", ({ node }) => {
-      const nodeData = data.nodes.find((n) => n.id === node);
-      if (nodeData && (nodeData.type === "pillar" || nodeData.type === "strategy")) {
-        onFocusSubtree(node);
+      if (viewMode === "cascade") {
+        const nodeData = data.nodes.find((n) => n.id === node);
+        if (nodeData && (nodeData.type === "pillar" || nodeData.type === "strategy")) {
+          onFocusSubtree(node);
+        }
       }
     });
 
@@ -155,7 +163,7 @@ export default function GraphView({
     return () => {
       sigma.kill();
     };
-  }, [data]);
+  }, [data, viewMode]);
 
   // Handle cross-links visibility
   useEffect(() => {
@@ -164,15 +172,17 @@ export default function GraphView({
 
     graph.forEachEdge((edge, attrs) => {
       if (attrs.edgeType === "cross-link") {
-        graph.setEdgeAttribute(edge, "hidden", !showCrossLinks);
+        // In network mode, always show cross-links
+        graph.setEdgeAttribute(edge, "hidden", viewMode === "cascade" ? !showCrossLinks : false);
       }
     });
 
     sigmaRef.current?.refresh();
-  }, [showCrossLinks]);
+  }, [showCrossLinks, viewMode]);
 
-  // Handle focused subtree
+  // Handle focused subtree (cascade mode only)
   useEffect(() => {
+    if (viewMode !== "cascade") return;
     const graph = graphRef.current;
     const sigma = sigmaRef.current;
     if (!graph || !sigma) return;
@@ -212,18 +222,43 @@ export default function GraphView({
 
     sigma.refresh();
     sigma.getCamera().animatedReset({ duration: 300 });
-  }, [focusedSubtree, data, showCrossLinks]);
+  }, [focusedSubtree, data, showCrossLinks, viewMode]);
 
-  // Update reducers when selection changes
+  // Handle tag highlighting + selection dimming
   useEffect(() => {
     const sigma = sigmaRef.current;
     const graph = graphRef.current;
     if (!sigma || !graph) return;
 
+    // Build set of node IDs matching the highlighted tag
+    const taggedNodes = new Set<string>();
+    if (highlightedTag) {
+      for (const node of data.nodes) {
+        if (node.tags.includes(highlightedTag)) {
+          taggedNodes.add(node.id);
+        }
+      }
+    }
+
     sigma.setSetting("nodeReducer", (node: string, attrs: any) => {
       const res = { ...attrs };
-      const activeNode = hoveredNode || selectedNodeId;
 
+      // Tag highlighting takes priority
+      if (highlightedTag) {
+        if (taggedNodes.has(node)) {
+          res.highlighted = true;
+          res.zIndex = 2;
+        } else {
+          res.color = "rgba(100, 100, 120, 0.15)";
+          res.borderColor = "rgba(100, 100, 120, 0.1)";
+          res.label = null;
+          res.zIndex = 0;
+        }
+        return res;
+      }
+
+      // Node hover/selection highlighting
+      const activeNode = hoveredNode || selectedNodeId;
       if (activeNode && graph.hasNode(activeNode)) {
         const neighbors = new Set<string>();
         neighbors.add(activeNode);
@@ -249,8 +284,19 @@ export default function GraphView({
 
     sigma.setSetting("edgeReducer", (edge: string, attrs: any) => {
       const res = { ...attrs };
-      const activeNode = hoveredNode || selectedNodeId;
 
+      if (highlightedTag) {
+        const source = graph.source(edge);
+        const target = graph.target(edge);
+        if (taggedNodes.has(source) && taggedNodes.has(target)) {
+          res.color = "rgba(255, 255, 255, 0.4)";
+        } else {
+          res.color = "rgba(255, 255, 255, 0.02)";
+        }
+        return res;
+      }
+
+      const activeNode = hoveredNode || selectedNodeId;
       if (activeNode && graph.hasNode(activeNode)) {
         const source = graph.source(edge);
         const target = graph.target(edge);
@@ -267,7 +313,7 @@ export default function GraphView({
     });
 
     sigma.refresh();
-  }, [selectedNodeId, hoveredNode]);
+  }, [selectedNodeId, hoveredNode, highlightedTag, data]);
 
   return (
     <div className="graph-view" ref={containerRef}>
@@ -276,9 +322,9 @@ export default function GraphView({
           {data.nodes.find((n) => n.id === hoveredNode)?.title}
         </div>
       )}
-      {focusedSubtree && (
+      {focusedSubtree && viewMode === "cascade" && (
         <button className="back-btn" onClick={() => onFocusSubtree(null)}>
-          \u2190 Back to full map
+          ← Back to full map
         </button>
       )}
       <Legend />

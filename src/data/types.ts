@@ -27,10 +27,13 @@ export interface MapNode {
   type: NodeType;
   status: NodeStatus;
   parentId?: string;
+  tags: string[];
   researchQuestions: ResearchQuestion[];
   resources: Resource[];
   people: Person[];
 }
+
+export type ViewMode = "cascade" | "network";
 
 export interface MapEdge {
   id: string;

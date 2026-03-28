@@ -1,8 +1,12 @@
+import { ViewMode } from "../data/types";
+
 interface TopBarProps {
   showCrossLinks: boolean;
   onToggleCrossLinks: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }
 
 export default function TopBar({
@@ -10,6 +14,8 @@ export default function TopBar({
   onToggleCrossLinks,
   searchQuery,
   onSearchChange,
+  viewMode,
+  onViewModeChange,
 }: TopBarProps) {
   return (
     <div className="topbar">
@@ -24,6 +30,20 @@ export default function TopBar({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
         />
+        <div className="view-toggle">
+          <button
+            className={`toggle-btn ${viewMode === "cascade" ? "active" : ""}`}
+            onClick={() => onViewModeChange("cascade")}
+          >
+            Cascade
+          </button>
+          <button
+            className={`toggle-btn ${viewMode === "network" ? "active" : ""}`}
+            onClick={() => onViewModeChange("network")}
+          >
+            Network
+          </button>
+        </div>
         <button
           className={`toggle-btn ${showCrossLinks ? "active" : ""}`}
           onClick={onToggleCrossLinks}

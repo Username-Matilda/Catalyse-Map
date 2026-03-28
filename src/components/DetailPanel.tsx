@@ -1,4 +1,5 @@
 import { MapNode, MapData } from "../data/types";
+import { TAG_COLORS } from "../data/graphBuilder";
 
 interface DetailPanelProps {
   node: MapNode;
@@ -78,6 +79,24 @@ export default function DetailPanel({
           </button>
         )}
       </div>
+
+      {/* Tags */}
+      {node.tags.length > 0 && (
+        <div className="detail-section">
+          <div className="detail-section-title">Tags</div>
+          <div className="detail-tags">
+            {node.tags.map((tag) => (
+              <span
+                key={tag}
+                className="tag-pill"
+                style={{ backgroundColor: TAG_COLORS[tag] || "#6b7280" }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Description */}
       {node.description && (
