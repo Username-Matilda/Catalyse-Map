@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import Graph from "graphology";
 import Sigma from "sigma";
 import { MapData } from "../data/types";
@@ -27,19 +27,6 @@ export default function GraphView({
   const graphRef = useRef<Graph | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
-  // Compute neighbor sets for hover/selection highlighting
-  const getNeighborSet = useCallback(
-    (nodeId: string, graph: Graph): Set<string> => {
-      const neighbors = new Set<string>();
-      neighbors.add(nodeId);
-      graph.forEachNeighbor(nodeId, (neighbor) => {
-        neighbors.add(neighbor);
-      });
-      return neighbors;
-    },
-    [],
-  );
-
   // Build and render graph
   useEffect(() => {
     if (!containerRef.current) return;
@@ -48,7 +35,6 @@ export default function GraphView({
     applyCascadeLayout(graph, data);
     graphRef.current = graph;
 
-    // We capture the current state in a closure-safe way
     let currentHoveredNode: string | null = null;
     let currentSelectedNode: string | null = selectedNodeId;
 
@@ -59,7 +45,7 @@ export default function GraphView({
       labelWeight: "bold",
       labelFont: "Inter, sans-serif",
       defaultEdgeType: "arrow",
-      labelRenderedSizeThreshold: 6,
+      labelRenderedSizeThreshold: 4,
       zoomToSizeRatioFunction: () => 1,
       defaultNodeColor: "#6b7280",
       defaultEdgeColor: "rgba(255,255,255,0.12)",
@@ -67,7 +53,6 @@ export default function GraphView({
       labelDensity: 2,
       labelGridCellSize: 100,
 
-      // Node reducer: handles hover dimming + selection highlight
       nodeReducer: (node, attrs) => {
         const res = { ...attrs };
         const activeNode = currentHoveredNode || currentSelectedNode;
@@ -80,14 +65,11 @@ export default function GraphView({
           });
 
           if (node === activeNode) {
-            // Highlighted ring for the active node
             res.highlighted = true;
             res.zIndex = 2;
           } else if (neighbors.has(node)) {
-            // Neighbors stay visible
             res.zIndex = 1;
           } else {
-            // Dim everything else
             res.color = "rgba(255, 255, 255, 0.08)";
             res.label = null;
             res.zIndex = 0;
@@ -97,7 +79,6 @@ export default function GraphView({
         return res;
       },
 
-      // Edge reducer: dim edges not connected to hovered/selected node
       edgeReducer: (edge, attrs) => {
         const res = { ...attrs };
         const activeNode = currentHoveredNode || currentSelectedNode;
@@ -110,7 +91,6 @@ export default function GraphView({
             res.color = "rgba(255, 255, 255, 0.03)";
             res.hidden = false;
           } else {
-            // Make connected edges more visible
             res.color = "rgba(255, 255, 255, 0.5)";
             res.size = (attrs.size || 1.5) + 0.5;
           }
@@ -142,7 +122,6 @@ export default function GraphView({
       sigma.refresh();
     });
 
-    // Click on stage to deselect
     sigma.on("clickStage", () => {
       onSelectNode(null);
     });
@@ -168,7 +147,7 @@ export default function GraphView({
     sigmaRef.current?.refresh();
   }, [showCrossLinks]);
 
-  // Handle focused subtree (click-to-expand)
+  // Handle focused subtree
   useEffect(() => {
     const graph = graphRef.current;
     const sigma = sigmaRef.current;
@@ -195,7 +174,6 @@ export default function GraphView({
         );
       });
 
-      // Re-layout just the subtree
       const subtreeData: MapData = {
         nodes: data.nodes.filter((n) => subtreeNodes.has(n.id)),
         edges: data.edges.filter(
@@ -204,7 +182,6 @@ export default function GraphView({
       };
       applyCascadeLayout(graph, subtreeData);
     } else {
-      // Show all nodes
       graph.forEachNode((node) => {
         graph.setNodeAttribute(node, "hidden", false);
       });
@@ -219,7 +196,7 @@ export default function GraphView({
     sigma.getCamera().animatedReset({ duration: 300 });
   }, [focusedSubtree, data, showCrossLinks]);
 
-  // Update selected node in the reducer's closure
+  // Update reducers when selection changes
   useEffect(() => {
     const sigma = sigmaRef.current;
     const graph = graphRef.current;
