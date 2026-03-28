@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Graph from "graphology";
 import Sigma from "sigma";
 import { MapData } from "../data/types";
 import { buildGraph, applyCascadeLayout, getSubtreeNodes } from "../data/graphBuilder";
+import Legend from "./Legend";
 
 interface GraphViewProps {
   data: MapData;
@@ -26,6 +27,19 @@ export default function GraphView({
   const graphRef = useRef<Graph | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
+  // Compute neighbor sets for hover/selection highlighting
+  const getNeighborSet = useCallback(
+    (nodeId: string, graph: Graph): Set<string> => {
+      const neighbors = new Set<string>();
+      neighbors.add(nodeId);
+      graph.forEachNeighbor(nodeId, (neighbor) => {
+        neighbors.add(neighbor);
+      });
+      return neighbors;
+    },
+    [],
+  );
+
   // Build and render graph
   useEffect(() => {
     if (!containerRef.current) return;
@@ -34,17 +48,76 @@ export default function GraphView({
     applyCascadeLayout(graph, data);
     graphRef.current = graph;
 
+    // We capture the current state in a closure-safe way
+    let currentHoveredNode: string | null = null;
+    let currentSelectedNode: string | null = selectedNodeId;
+
     const sigma = new Sigma(graph, containerRef.current, {
       renderEdgeLabels: false,
       labelColor: { color: "#e2e4eb" },
-      labelSize: 12,
+      labelSize: 14,
+      labelWeight: "bold",
       labelFont: "Inter, sans-serif",
       defaultEdgeType: "arrow",
-      labelRenderedSizeThreshold: 4,
+      labelRenderedSizeThreshold: 6,
       zoomToSizeRatioFunction: () => 1,
       defaultNodeColor: "#6b7280",
       defaultEdgeColor: "rgba(255,255,255,0.12)",
       stagePadding: 60,
+      labelDensity: 2,
+      labelGridCellSize: 100,
+
+      // Node reducer: handles hover dimming + selection highlight
+      nodeReducer: (node, attrs) => {
+        const res = { ...attrs };
+        const activeNode = currentHoveredNode || currentSelectedNode;
+
+        if (activeNode) {
+          const neighbors = new Set<string>();
+          neighbors.add(activeNode);
+          graph.forEachNeighbor(activeNode, (neighbor) => {
+            neighbors.add(neighbor);
+          });
+
+          if (node === activeNode) {
+            // Highlighted ring for the active node
+            res.highlighted = true;
+            res.zIndex = 2;
+          } else if (neighbors.has(node)) {
+            // Neighbors stay visible
+            res.zIndex = 1;
+          } else {
+            // Dim everything else
+            res.color = "rgba(255, 255, 255, 0.08)";
+            res.label = null;
+            res.zIndex = 0;
+          }
+        }
+
+        return res;
+      },
+
+      // Edge reducer: dim edges not connected to hovered/selected node
+      edgeReducer: (edge, attrs) => {
+        const res = { ...attrs };
+        const activeNode = currentHoveredNode || currentSelectedNode;
+
+        if (activeNode) {
+          const source = graph.source(edge);
+          const target = graph.target(edge);
+
+          if (source !== activeNode && target !== activeNode) {
+            res.color = "rgba(255, 255, 255, 0.03)";
+            res.hidden = false;
+          } else {
+            // Make connected edges more visible
+            res.color = "rgba(255, 255, 255, 0.5)";
+            res.size = (attrs.size || 1.5) + 0.5;
+          }
+        }
+
+        return res;
+      },
     });
 
     sigma.on("clickNode", ({ node }) => {
@@ -58,8 +131,16 @@ export default function GraphView({
       }
     });
 
-    sigma.on("enterNode", ({ node }) => setHoveredNode(node));
-    sigma.on("leaveNode", () => setHoveredNode(null));
+    sigma.on("enterNode", ({ node }) => {
+      currentHoveredNode = node;
+      setHoveredNode(node);
+      sigma.refresh();
+    });
+    sigma.on("leaveNode", () => {
+      currentHoveredNode = null;
+      setHoveredNode(null);
+      sigma.refresh();
+    });
 
     // Click on stage to deselect
     sigma.on("clickStage", () => {
@@ -138,13 +219,59 @@ export default function GraphView({
     sigma.getCamera().animatedReset({ duration: 300 });
   }, [focusedSubtree, data, showCrossLinks]);
 
-  // Highlight selected node
+  // Update selected node in the reducer's closure
   useEffect(() => {
+    const sigma = sigmaRef.current;
     const graph = graphRef.current;
-    if (!graph) return;
+    if (!sigma || !graph) return;
 
-    sigmaRef.current?.refresh();
-  }, [selectedNodeId]);
+    sigma.setSetting("nodeReducer", (node: string, attrs: any) => {
+      const res = { ...attrs };
+      const activeNode = hoveredNode || selectedNodeId;
+
+      if (activeNode && graph.hasNode(activeNode)) {
+        const neighbors = new Set<string>();
+        neighbors.add(activeNode);
+        graph.forEachNeighbor(activeNode, (neighbor) => {
+          neighbors.add(neighbor);
+        });
+
+        if (node === activeNode) {
+          res.highlighted = true;
+          res.zIndex = 2;
+        } else if (neighbors.has(node)) {
+          res.zIndex = 1;
+        } else {
+          res.color = "rgba(255, 255, 255, 0.08)";
+          res.label = null;
+          res.zIndex = 0;
+        }
+      }
+
+      return res;
+    });
+
+    sigma.setSetting("edgeReducer", (edge: string, attrs: any) => {
+      const res = { ...attrs };
+      const activeNode = hoveredNode || selectedNodeId;
+
+      if (activeNode && graph.hasNode(activeNode)) {
+        const source = graph.source(edge);
+        const target = graph.target(edge);
+
+        if (source !== activeNode && target !== activeNode) {
+          res.color = "rgba(255, 255, 255, 0.03)";
+        } else {
+          res.color = "rgba(255, 255, 255, 0.5)";
+          res.size = (attrs.size || 1.5) + 0.5;
+        }
+      }
+
+      return res;
+    });
+
+    sigma.refresh();
+  }, [selectedNodeId, hoveredNode]);
 
   return (
     <div className="graph-view" ref={containerRef}>
@@ -155,9 +282,10 @@ export default function GraphView({
       )}
       {focusedSubtree && (
         <button className="back-btn" onClick={() => onFocusSubtree(null)}>
-          ← Back to full map
+          \u2190 Back to full map
         </button>
       )}
+      <Legend />
     </div>
   );
 }

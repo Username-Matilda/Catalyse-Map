@@ -2,14 +2,14 @@ import Graph from "graphology";
 import { MapData, NodeType, NodeStatus } from "./types";
 
 const NODE_SIZES: Record<NodeType, number> = {
-  goal: 20,
-  pillar: 15,
-  strategy: 10,
-  intervention: 7,
-  annotation: 6,
+  goal: 30,
+  pillar: 22,
+  strategy: 14,
+  intervention: 10,
+  annotation: 8,
 };
 
-const STATUS_COLORS: Record<NodeStatus, string> = {
+export const STATUS_COLORS: Record<NodeStatus, string> = {
   "well-covered": "#22c55e",
   "in-progress": "#f59e0b",
   neglected: "#ef4444",
@@ -17,7 +17,7 @@ const STATUS_COLORS: Record<NodeStatus, string> = {
   unknown: "#6b7280",
 };
 
-const TYPE_COLORS: Record<NodeType, string> = {
+export const TYPE_COLORS: Record<NodeType, string> = {
   goal: "#f59e0b",
   pillar: "#3b82f6",
   strategy: "#e2e4eb",
@@ -29,12 +29,15 @@ export function buildGraph(data: MapData): Graph {
   const graph = new Graph();
 
   for (const node of data.nodes) {
+    const isTopLevel = node.type === "goal" || node.type === "pillar";
     graph.addNode(node.id, {
       label: node.title,
       size: NODE_SIZES[node.type],
-      color: node.type === "goal" || node.type === "pillar"
-        ? TYPE_COLORS[node.type]
+      color: isTopLevel
+        ? "#1a1d27"  // dark fill for goal/pillar (border provides the color)
         : STATUS_COLORS[node.status],
+      borderColor: isTopLevel ? TYPE_COLORS[node.type] : undefined,
+      borderSize: isTopLevel ? 3 : 0,
       nodeType: node.type,
       status: node.status,
       x: 0,
@@ -48,9 +51,9 @@ export function buildGraph(data: MapData): Graph {
         edgeType: edge.type,
         label: edge.label,
         color: edge.type === "cross-link"
-          ? "rgba(168, 85, 247, 0.35)"
-          : "rgba(255, 255, 255, 0.12)",
-        size: edge.type === "cross-link" ? 1 : 1.5,
+          ? "rgba(168, 85, 247, 0.5)"
+          : "rgba(255, 255, 255, 0.18)",
+        size: edge.type === "cross-link" ? 1 : 2,
         type: "arrow",
       });
     }
@@ -59,58 +62,82 @@ export function buildGraph(data: MapData): Graph {
   return graph;
 }
 
-// Hierarchical top-down layout for cascade view
+// Subtree-aware hierarchical cascade layout
 export function applyCascadeLayout(graph: Graph, data: MapData) {
-  const children = new Map<string, string[]>();
+  const childrenMap = new Map<string, string[]>();
   const roots: string[] = [];
 
   for (const node of data.nodes) {
     if (node.parentId) {
-      const siblings = children.get(node.parentId) || [];
+      const siblings = childrenMap.get(node.parentId) || [];
       siblings.push(node.id);
-      children.set(node.parentId, siblings);
+      childrenMap.set(node.parentId, siblings);
     } else {
       roots.push(node.id);
     }
   }
 
-  const layerCount: Record<number, number> = {};
-  const layerIndex: Record<number, number> = {};
+  // Step 1: Calculate the width (number of leaves) each subtree needs
+  const subtreeWidth = new Map<string, number>();
 
-  // First pass: count nodes per layer
-  function countLayer(nodeId: string, depth: number) {
-    layerCount[depth] = (layerCount[depth] || 0) + 1;
-    const kids = children.get(nodeId) || [];
+  function calcWidth(nodeId: string): number {
+    const kids = childrenMap.get(nodeId) || [];
+    if (kids.length === 0) {
+      subtreeWidth.set(nodeId, 1);
+      return 1;
+    }
+    let total = 0;
     for (const kid of kids) {
-      countLayer(kid, depth + 1);
+      total += calcWidth(kid);
     }
-  }
-  for (const root of roots) countLayer(root, 0);
-
-  // Second pass: assign positions
-  function assignPositions(nodeId: string, depth: number) {
-    const count = layerCount[depth] || 1;
-    const idx = layerIndex[depth] || 0;
-    layerIndex[depth] = idx + 1;
-
-    const spacing = Math.max(8, 40 / count);
-    const totalWidth = spacing * (count - 1);
-    const x = -totalWidth / 2 + idx * spacing;
-    const y = -depth * 10;
-
-    if (graph.hasNode(nodeId)) {
-      graph.setNodeAttribute(nodeId, "x", x);
-      graph.setNodeAttribute(nodeId, "y", y);
-    }
-
-    const kids = children.get(nodeId) || [];
-    for (const kid of kids) {
-      assignPositions(kid, depth + 1);
-    }
+    subtreeWidth.set(nodeId, total);
+    return total;
   }
 
   for (const root of roots) {
-    assignPositions(root, 0);
+    calcWidth(root);
+  }
+
+  // Step 2: Assign positions by allocating horizontal space proportionally
+  const LEAF_SPACING = 8; // horizontal space per leaf unit
+
+  function assignPositions(nodeId: string, depth: number, leftX: number, allocatedWidth: number) {
+    const width = subtreeWidth.get(nodeId) || 1;
+    // Center this node in its allocated space
+    const centerX = leftX + allocatedWidth / 2;
+    const y = -depth * 10;
+
+    if (graph.hasNode(nodeId)) {
+      graph.setNodeAttribute(nodeId, "x", centerX);
+      graph.setNodeAttribute(nodeId, "y", y);
+    }
+
+    const kids = childrenMap.get(nodeId) || [];
+    if (kids.length === 0) return;
+
+    // Distribute children proportionally within this node's allocated space
+    const totalChildWidth = kids.reduce((sum, kid) => sum + (subtreeWidth.get(kid) || 1), 0);
+    let currentX = leftX;
+
+    for (const kid of kids) {
+      const kidWidth = subtreeWidth.get(kid) || 1;
+      const kidAllocated = (kidWidth / totalChildWidth) * allocatedWidth;
+      assignPositions(kid, depth + 1, currentX, kidAllocated);
+      currentX += kidAllocated;
+    }
+  }
+
+  // Calculate total width needed
+  const totalLeaves = roots.reduce((sum, root) => sum + (subtreeWidth.get(root) || 1), 0);
+  const totalWidth = totalLeaves * LEAF_SPACING;
+
+  // Position all root trees
+  let currentX = -totalWidth / 2;
+  for (const root of roots) {
+    const rootWidth = subtreeWidth.get(root) || 1;
+    const rootAllocated = (rootWidth / totalLeaves) * totalWidth;
+    assignPositions(root, 0, currentX, rootAllocated);
+    currentX += rootAllocated;
   }
 }
 
