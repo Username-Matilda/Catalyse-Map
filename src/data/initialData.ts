@@ -10,6 +10,7 @@ export const initialData: MapData = {
         "A globally endorsed and enforced 10 year+ pause on frontier AI/ASI research, with deep public and institutional buy-in. Key components: (1) add friction to buy time, (2) channel things in the right direction for pause tractability, buy-in and ease of implementation.",
       type: "goal",
       status: "unknown",
+      tags: ["policy", "coalition-building"],
       researchQuestions: [
         { id: "gq1", text: "What does 'frontier AI' actually mean in a treaty context — where is the line?" },
         { id: "gq2", text: "What are the most plausible enforcement mechanisms for a global pause?" },
@@ -27,6 +28,7 @@ export const initialData: MapData = {
       type: "pillar",
       status: "in-progress",
       parentId: "goal",
+      tags: ["policy", "lobbying", "research"],
       researchQuestions: [
         { id: "tq1", text: "Which existing treaty frameworks (NPT, CWC, etc.) are closest analogues?" },
         { id: "tq2", text: "What verification mechanisms could detect covert frontier AI research?" },
@@ -45,6 +47,7 @@ export const initialData: MapData = {
       type: "pillar",
       status: "neglected",
       parentId: "goal",
+      tags: ["messaging", "organizing", "coalition-building"],
       researchQuestions: [
         { id: "pq1", text: "What does public opinion on AI risk actually look like across countries?" },
         { id: "pq2", text: "Which framings of AI risk resonate most with different demographics?" },
@@ -60,6 +63,7 @@ export const initialData: MapData = {
       type: "pillar",
       status: "neglected",
       parentId: "goal",
+      tags: ["economic", "policy", "research"],
       researchQuestions: [
         { id: "eq1", text: "How much of the AI investment boom is based on realistic vs. inflated expectations?" },
         { id: "eq2", text: "What economic levers (subsidies, taxes, procurement rules) could shift incentives?" },
@@ -77,6 +81,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "in-progress",
       parentId: "treaty",
+      tags: ["policy", "lobbying"],
       researchQuestions: [
         { id: "ppq1", text: "Which legislators/officials are most receptive and influential?" },
         { id: "ppq2", text: "What policy wins (even small ones) would create momentum toward a treaty?" },
@@ -94,6 +99,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "neglected",
       parentId: "public-buyin",
+      tags: ["messaging", "branding", "writing"],
       researchQuestions: [
         { id: "mq1", text: "What framings have been tested? What resonates vs. backfires?" },
         { id: "mq2", text: "How do we avoid the 'AI doomer' label while communicating genuine risk?" },
@@ -109,6 +115,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "neglected",
       parentId: "public-buyin",
+      tags: ["organizing", "labor", "coalition-building"],
       researchQuestions: [
         { id: "coq1", text: "Which communities are most affected by AI displacement and most ready to organise?" },
       ],
@@ -123,6 +130,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "in-progress",
       parentId: "public-buyin",
+      tags: ["talent-pipeline", "organizing"],
       researchQuestions: [
         { id: "tfq1", text: "What are the biggest bottlenecks for people trying to contribute?" },
       ],
@@ -137,6 +145,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "neglected",
       parentId: "public-buyin",
+      tags: ["regional", "organizing", "research"],
       researchQuestions: [
         { id: "nrq1", text: "Which supply chain actors have the most leverage over AI hardware production?" },
         { id: "nrq2", text: "What does AI risk discourse look like in major Asian and African countries?" },
@@ -154,6 +163,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "unfunded",
       parentId: "economic",
+      tags: ["economic", "research", "proof-of-concept"],
       researchQuestions: [
         { id: "bbq1", text: "What's the best evidence that AI capabilities are overhyped relative to investment?" },
         { id: "bbq2", text: "Can we prove AI capabilities gains can be slowed down, as a proof of concept?" },
@@ -169,6 +179,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "neglected",
       parentId: "economic",
+      tags: ["branding", "messaging"],
       researchQuestions: [
         { id: "rpq1", text: "What successful rebranding campaigns from other movements can we learn from?" },
       ],
@@ -183,6 +194,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "unfunded",
       parentId: "economic",
+      tags: ["labor", "organizing", "writing"],
       researchQuestions: [
         { id: "uoq1", text: "What legal frameworks exist for tech worker unionisation in US, UK, and EU?" },
         { id: "uoq2", text: "Which labs have the most receptive employee sentiment toward collective action?" },
@@ -204,6 +216,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "neglected",
       parentId: "economic",
+      tags: ["economic", "messaging", "lobbying"],
       researchQuestions: [
         { id: "aaq1", text: "Who are the most influential AI adoption consultancies and analysts?" },
       ],
@@ -218,6 +231,7 @@ export const initialData: MapData = {
       type: "strategy",
       status: "in-progress",
       parentId: "economic",
+      tags: ["policy", "economic", "lobbying"],
       researchQuestions: [
         { id: "ssq1", text: "Which government funding programmes already support AI safety?" },
       ],
@@ -232,6 +246,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "messaging",
+      tags: ["branding", "messaging"],
       researchQuestions: [],
       resources: [],
       people: [],
@@ -242,6 +257,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "community-organising",
+      tags: ["organizing", "labor"],
       researchQuestions: [],
       resources: [],
       people: [],
@@ -252,6 +268,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "burst-bubble",
+      tags: ["economic", "research", "writing"],
       researchQuestions: [],
       resources: [],
       people: [],
@@ -262,6 +279,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "burst-bubble",
+      tags: ["research", "proof-of-concept"],
       researchQuestions: [],
       resources: [],
       people: [],
@@ -272,6 +290,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "rebrand-pause",
+      tags: ["branding", "messaging"],
       researchQuestions: [],
       resources: [],
       people: [],
@@ -282,6 +301,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "union-organising",
+      tags: ["writing", "labor"],
       researchQuestions: [],
       resources: [],
       people: [],
@@ -292,6 +312,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "union-organising",
+      tags: ["coalition-building", "lobbying"],
       researchQuestions: [],
       resources: [],
       people: [],
@@ -302,6 +323,7 @@ export const initialData: MapData = {
       type: "intervention",
       status: "neglected",
       parentId: "union-organising",
+      tags: ["labor", "organizing"],
       researchQuestions: [],
       resources: [],
       people: [],

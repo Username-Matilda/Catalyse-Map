@@ -111,6 +111,25 @@ body {
   border-color: var(--accent-blue);
 }
 
+.view-toggle {
+  display: flex;
+  gap: 0;
+}
+
+.view-toggle .toggle-btn {
+  border-radius: 0;
+  border-right-width: 0;
+}
+
+.view-toggle .toggle-btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.view-toggle .toggle-btn:last-child {
+  border-radius: 0 6px 6px 0;
+  border-right-width: 1px;
+}
+
 .add-node-btn {
   color: var(--accent-green);
   border-color: var(--accent-green);
@@ -544,6 +563,54 @@ body {
 .add-btn:hover {
   border-color: var(--accent-blue);
   color: var(--accent-blue);
+}
+
+/* ── Detail Tags ── */
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Tag Groups (Network sidebar) ── */
+.tag-group {
+  margin-bottom: 2px;
+}
+
+.tag-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.tag-group-header:hover {
+  background: var(--surface-hover);
+}
+
+.tag-group-header.highlighted {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.tag-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.tag-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.tag-group-nodes {
+  /* inherits tree-node styles */
 }
 
 /* ── Scrollbar ── */
