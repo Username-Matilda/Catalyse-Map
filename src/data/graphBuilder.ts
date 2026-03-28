@@ -51,7 +51,7 @@ export function buildGraph(data: MapData): Graph {
           ? "rgba(168, 85, 247, 0.35)"
           : "rgba(255, 255, 255, 0.12)",
         size: edge.type === "cross-link" ? 1 : 1.5,
-        type: edge.type === "cross-link" ? "dashed" : "arrow",
+        type: "arrow",
       });
     }
   }
