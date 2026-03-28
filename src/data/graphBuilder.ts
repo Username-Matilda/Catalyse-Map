@@ -2,11 +2,11 @@ import Graph from "graphology";
 import { MapData, NodeType, NodeStatus } from "./types";
 
 const NODE_SIZES: Record<NodeType, number> = {
-  goal: 30,
-  pillar: 22,
-  strategy: 14,
-  intervention: 10,
-  annotation: 8,
+  goal: 32,
+  pillar: 24,
+  strategy: 16,
+  intervention: 11,
+  annotation: 9,
 };
 
 export const STATUS_COLORS: Record<NodeStatus, string> = {
@@ -33,11 +33,9 @@ export function buildGraph(data: MapData): Graph {
     graph.addNode(node.id, {
       label: node.title,
       size: NODE_SIZES[node.type],
-      color: isTopLevel
-        ? "#1a1d27"
-        : STATUS_COLORS[node.status],
-      borderColor: isTopLevel ? TYPE_COLORS[node.type] : undefined,
-      borderSize: isTopLevel ? 3 : 0,
+      color: isTopLevel ? "#1a1d27" : STATUS_COLORS[node.status],
+      borderColor: isTopLevel ? TYPE_COLORS[node.type] : STATUS_COLORS[node.status],
+      borderRatio: isTopLevel ? 0.15 : 0.08,
       nodeType: node.type,
       status: node.status,
       x: 0,
@@ -51,10 +49,11 @@ export function buildGraph(data: MapData): Graph {
         edgeType: edge.type,
         label: edge.label,
         color: edge.type === "cross-link"
-          ? "rgba(168, 85, 247, 0.6)"
-          : "rgba(255, 255, 255, 0.2)",
-        size: edge.type === "cross-link" ? 1.5 : 2.5,
-        type: "arrow",
+          ? "rgba(168, 85, 247, 0.7)"
+          : "rgba(255, 255, 255, 0.25)",
+        size: edge.type === "cross-link" ? 1.5 : 2,
+        type: edge.type === "cross-link" ? "curvedArrow" : "arrow",
+        curvature: edge.type === "cross-link" ? 0.3 : 0,
       });
     }
   }
@@ -62,7 +61,6 @@ export function buildGraph(data: MapData): Graph {
   return graph;
 }
 
-// Subtree-aware hierarchical cascade layout
 export function applyCascadeLayout(graph: Graph, data: MapData) {
   const childrenMap = new Map<string, string[]>();
   const roots: string[] = [];
@@ -97,11 +95,12 @@ export function applyCascadeLayout(graph: Graph, data: MapData) {
     calcWidth(root);
   }
 
-  const LEAF_SPACING = 12;
+  const LEAF_SPACING = 14;
+  const DEPTH_SPACING = 12;
 
   function assignPositions(nodeId: string, depth: number, leftX: number, allocatedWidth: number) {
     const centerX = leftX + allocatedWidth / 2;
-    const y = -depth * 10;
+    const y = -depth * DEPTH_SPACING;
 
     if (graph.hasNode(nodeId)) {
       graph.setNodeAttribute(nodeId, "x", centerX);
