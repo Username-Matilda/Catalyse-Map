@@ -93,10 +93,10 @@ export function applyCascadeLayout(graph: Graph, data: MapData) {
     const idx = layerIndex[depth] || 0;
     layerIndex[depth] = idx + 1;
 
-    const spacing = Math.max(3, 14 / count);
+    const spacing = Math.max(8, 40 / count);
     const totalWidth = spacing * (count - 1);
     const x = -totalWidth / 2 + idx * spacing;
-    const y = depth * 3;
+    const y = -depth * 10;
 
     if (graph.hasNode(nodeId)) {
       graph.setNodeAttribute(nodeId, "x", x);
