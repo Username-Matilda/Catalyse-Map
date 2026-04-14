@@ -1,10 +1,10 @@
-import { STATUS_COLORS, TYPE_COLORS } from "../data/graphBuilder";
+import { STATUS_COLORS } from "../data/graphBuilder";
 
-const nodeTypes = [
-  { label: "Goal", color: TYPE_COLORS.goal, size: 14 },
-  { label: "Pillar", color: TYPE_COLORS.pillar, size: 12 },
-  { label: "Strategy", color: TYPE_COLORS.strategy, size: 10 },
-  { label: "Intervention", color: TYPE_COLORS.intervention, size: 7 },
+const nodeTypeEntries = [
+  { label: "Goal", color: "#f59e0b", size: 14 },
+  { label: "Pillar", color: "#3b82f6", size: 12 },
+  { label: "Strategy", color: "#e2e4eb", size: 10 },
+  { label: "Intervention", color: "#e2e4eb", size: 7 },
 ];
 
 const statuses = [
@@ -21,7 +21,7 @@ export default function Legend() {
       <div className="legend-section">
         <div className="legend-title">Node Types</div>
         <div className="legend-items">
-          {nodeTypes.map((t) => (
+          {nodeTypeEntries.map((t) => (
             <div className="legend-item" key={t.label}>
               <span
                 className="legend-circle"
