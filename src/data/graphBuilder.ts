@@ -1,14 +1,7 @@
 import Graph from "graphology";
 import forceAtlas2 from "graphology-layout-forceatlas2";
-import { MapData, NodeType, NodeStatus } from "./types";
-
-const NODE_SIZES: Record<NodeType, number> = {
-  goal: 32,
-  pillar: 24,
-  strategy: 16,
-  intervention: 11,
-  annotation: 9,
-};
+import { MapData, MapNode, NodeStatus } from "./types";
+import type { Node, Edge } from "@xyflow/react";
 
 export const STATUS_COLORS: Record<NodeStatus, string> = {
   "well-covered": "#22c55e",
@@ -18,55 +11,79 @@ export const STATUS_COLORS: Record<NodeStatus, string> = {
   unknown: "#6b7280",
 };
 
-export const TYPE_COLORS: Record<NodeType, string> = {
-  goal: "#f59e0b",
-  pillar: "#3b82f6",
-  strategy: "#e2e4eb",
-  intervention: "#e2e4eb",
-  annotation: "#6b7280",
+export const TAG_COLORS: Record<string, string> = {
+  policy: "#3b82f6",
+  messaging: "#f59e0b",
+  organizing: "#22c55e",
+  labor: "#ef4444",
+  economic: "#a855f7",
+  branding: "#ec4899",
+  writing: "#14b8a6",
+  lobbying: "#6366f1",
+  research: "#06b6d4",
+  regional: "#84cc16",
+  "coalition-building": "#f97316",
+  "talent-pipeline": "#8b5cf6",
+  "proof-of-concept": "#0ea5e9",
 };
 
-export function buildGraph(data: MapData): Graph {
-  const graph = new Graph();
+const NODE_WIDTH: Record<string, number> = {
+  goal: 280,
+  pillar: 240,
+  strategy: 220,
+  intervention: 200,
+  annotation: 180,
+};
 
-  for (const node of data.nodes) {
-    const isTopLevel = node.type === "goal" || node.type === "pillar";
-    graph.addNode(node.id, {
+const NODE_HEIGHT: Record<string, number> = {
+  goal: 60,
+  pillar: 70,
+  strategy: 70,
+  intervention: 50,
+  annotation: 50,
+};
+
+function makeRFNode(node: MapNode, x: number, y: number): Node {
+  return {
+    id: node.id,
+    type: node.type,
+    position: { x, y },
+    data: {
       label: node.title,
-      size: NODE_SIZES[node.type],
-      color: isTopLevel ? "#1a1d27" : STATUS_COLORS[node.status],
-      borderColor: isTopLevel ? TYPE_COLORS[node.type] : STATUS_COLORS[node.status],
-      borderRatio: isTopLevel ? 0.15 : 0.08,
       nodeType: node.type,
       status: node.status,
-      x: 0,
-      y: 0,
-    });
-  }
-
-  for (const edge of data.edges) {
-    if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
-      graph.addEdge(edge.source, edge.target, {
-        edgeType: edge.type,
-        label: edge.label,
-        color: edge.type === "cross-link"
-          ? "rgba(168, 85, 247, 0.7)"
-          : "rgba(255, 255, 255, 0.25)",
-        size: edge.type === "cross-link" ? 1.5 : 2,
-        type: edge.type === "cross-link" ? "curvedArrow" : "arrow",
-        curvature: edge.type === "cross-link" ? 0.3 : 0,
-      });
-    }
-  }
-
-  return graph;
+      tags: node.tags,
+    },
+    style: {
+      width: NODE_WIDTH[node.type] || 200,
+    },
+  };
 }
 
-export function applyCascadeLayout(graph: Graph, data: MapData) {
+function makeRFEdges(data: MapData): Edge[] {
+  return data.edges.map((edge) => ({
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    type: edge.type === "cross-link" ? "default" : "smoothstep",
+    animated: edge.type === "cross-link",
+    label: edge.label,
+    style: {
+      stroke: edge.type === "cross-link" ? "rgba(168, 85, 247, 0.6)" : "rgba(255, 255, 255, 0.25)",
+      strokeWidth: edge.type === "cross-link" ? 1.5 : 2,
+    },
+    markerEnd: { type: "arrowclosed" as const, color: edge.type === "cross-link" ? "rgba(168, 85, 247, 0.6)" : "rgba(255, 255, 255, 0.25)" },
+    data: { edgeType: edge.type },
+  }));
+}
+
+export function buildCascadeLayout(data: MapData): { nodes: Node[]; edges: Edge[] } {
   const childrenMap = new Map<string, string[]>();
   const roots: string[] = [];
+  const nodeMap = new Map<string, MapNode>();
 
   for (const node of data.nodes) {
+    nodeMap.set(node.id, node);
     if (node.parentId) {
       const siblings = childrenMap.get(node.parentId) || [];
       siblings.push(node.id);
@@ -92,21 +109,21 @@ export function applyCascadeLayout(graph: Graph, data: MapData) {
     return total;
   }
 
-  for (const root of roots) {
-    calcWidth(root);
-  }
+  for (const root of roots) calcWidth(root);
 
-  const LEAF_SPACING = 14;
-  const DEPTH_SPACING = 12;
+  const LEAF_SPACING = 260;
+  const DEPTH_SPACING = 140;
+
+  const rfNodes: Node[] = [];
 
   function assignPositions(nodeId: string, depth: number, leftX: number, allocatedWidth: number) {
-    const centerX = leftX + allocatedWidth / 2;
-    const y = -depth * DEPTH_SPACING;
+    const node = nodeMap.get(nodeId);
+    if (!node) return;
 
-    if (graph.hasNode(nodeId)) {
-      graph.setNodeAttribute(nodeId, "x", centerX);
-      graph.setNodeAttribute(nodeId, "y", y);
-    }
+    const centerX = leftX + allocatedWidth / 2 - (NODE_WIDTH[node.type] || 200) / 2;
+    const y = depth * DEPTH_SPACING;
+
+    rfNodes.push(makeRFNode(node, centerX, y));
 
     const kids = childrenMap.get(nodeId) || [];
     if (kids.length === 0) return;
@@ -125,68 +142,54 @@ export function applyCascadeLayout(graph: Graph, data: MapData) {
   const totalLeaves = roots.reduce((sum, root) => sum + (subtreeWidth.get(root) || 1), 0);
   const totalWidth = totalLeaves * LEAF_SPACING;
 
-  let currentX = -totalWidth / 2;
+  let currentX = 0;
   for (const root of roots) {
     const rootWidth = subtreeWidth.get(root) || 1;
     const rootAllocated = (rootWidth / totalLeaves) * totalWidth;
     assignPositions(root, 0, currentX, rootAllocated);
     currentX += rootAllocated;
   }
+
+  return { nodes: rfNodes, edges: makeRFEdges(data) };
 }
 
-export const TAG_COLORS: Record<string, string> = {
-  policy: "#3b82f6",
-  messaging: "#f59e0b",
-  organizing: "#22c55e",
-  labor: "#ef4444",
-  economic: "#a855f7",
-  branding: "#ec4899",
-  writing: "#14b8a6",
-  lobbying: "#6366f1",
-  research: "#06b6d4",
-  regional: "#84cc16",
-  "coalition-building": "#f97316",
-  "talent-pipeline": "#8b5cf6",
-  "proof-of-concept": "#0ea5e9",
-};
+export function buildNetworkLayout(data: MapData): { nodes: Node[]; edges: Edge[] } {
+  const graph = new Graph();
+  const nodeMap = new Map<string, MapNode>();
 
-// Network layout: force-directed with tag-based attraction edges
-export function applyNetworkLayout(graph: Graph, data: MapData) {
-  // Add temporary "tag hub" nodes and edges to create tag-based clustering
-  const tagGraph = graph.copy();
-  const tagHubs: string[] = [];
-
-  // Collect all tags
-  const allTags = new Set<string>();
   for (const node of data.nodes) {
-    for (const tag of node.tags) {
-      allTags.add(tag);
+    nodeMap.set(node.id, node);
+    graph.addNode(node.id, {
+      x: Math.random() * 100 - 50,
+      y: Math.random() * 100 - 50,
+      size: 1,
+    });
+  }
+
+  for (const edge of data.edges) {
+    if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
+      graph.addEdge(edge.source, edge.target);
     }
   }
 
-  // Add invisible tag hub nodes and connect tagged nodes to them
+  const allTags = new Set<string>();
+  for (const node of data.nodes) {
+    for (const tag of node.tags) allTags.add(tag);
+  }
+
+  const tagHubs: string[] = [];
   for (const tag of allTags) {
     const hubId = `__tag_hub_${tag}`;
     tagHubs.push(hubId);
-    tagGraph.addNode(hubId, { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, size: 1 });
-
+    graph.addNode(hubId, { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, size: 1 });
     for (const node of data.nodes) {
-      if (node.tags.includes(tag) && tagGraph.hasNode(node.id)) {
-        tagGraph.addEdge(node.id, hubId, { weight: 3 });
+      if (node.tags.includes(tag)) {
+        graph.addEdge(node.id, hubId, { weight: 3 });
       }
     }
   }
 
-  // Randomize starting positions
-  tagGraph.forEachNode((node) => {
-    if (!tagHubs.includes(node)) {
-      tagGraph.setNodeAttribute(node, "x", Math.random() * 100 - 50);
-      tagGraph.setNodeAttribute(node, "y", Math.random() * 100 - 50);
-    }
-  });
-
-  // Run force-directed layout on the augmented graph
-  forceAtlas2.assign(tagGraph, {
+  forceAtlas2.assign(graph, {
     iterations: 200,
     settings: {
       gravity: 0.8,
@@ -198,13 +201,15 @@ export function applyNetworkLayout(graph: Graph, data: MapData) {
     },
   });
 
-  // Copy positions back to the real graph (skip tag hubs)
-  tagGraph.forEachNode((node, attrs) => {
-    if (!tagHubs.includes(node) && graph.hasNode(node)) {
-      graph.setNodeAttribute(node, "x", attrs.x);
-      graph.setNodeAttribute(node, "y", attrs.y);
-    }
-  });
+  const SCALE = 15;
+  const rfNodes: Node[] = [];
+
+  for (const node of data.nodes) {
+    const attrs = graph.getNodeAttributes(node.id);
+    rfNodes.push(makeRFNode(node, attrs.x * SCALE, attrs.y * SCALE));
+  }
+
+  return { nodes: rfNodes, edges: makeRFEdges(data) };
 }
 
 export function getSubtreeNodes(nodeId: string, data: MapData): Set<string> {

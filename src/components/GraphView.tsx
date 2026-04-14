@@ -1,21 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import Graph from "graphology";
-import Sigma from "sigma";
-import { createNodeBorderProgram } from "@sigma/node-border";
-import { EdgeCurvedArrowProgram } from "@sigma/edge-curve";
+import { useCallback, useMemo } from "react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  type Node,
+  BackgroundVariant,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { MapData, ViewMode } from "../data/types";
-import { buildGraph, applyCascadeLayout, applyNetworkLayout, getSubtreeNodes } from "../data/graphBuilder";
+import { buildCascadeLayout, buildNetworkLayout, getSubtreeNodes, STATUS_COLORS } from "../data/graphBuilder";
+import { nodeTypes } from "./MapNodes";
 import Legend from "./Legend";
-
-const NodeBorderProg = createNodeBorderProgram({
-  borders: [
-    {
-      size: { attribute: "borderRatio", defaultValue: 0.1 },
-      color: { attribute: "borderColor", defaultValue: "#ffffff" },
-    },
-    { size: { fill: true }, color: { attribute: "color" } },
-  ],
-});
 
 interface GraphViewProps {
   data: MapData;
@@ -38,287 +36,154 @@ export default function GraphView({
   viewMode,
   highlightedTag,
 }: GraphViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const sigmaRef = useRef<Sigma | null>(null);
-  const graphRef = useRef<Graph | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-
-  // Build and render graph — recreate when viewMode changes
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const graph = buildGraph(data);
-
-    if (viewMode === "cascade") {
-      applyCascadeLayout(graph, data);
-    } else {
-      applyNetworkLayout(graph, data);
+  const layoutData = useMemo(() => {
+    if (viewMode === "network") {
+      return buildNetworkLayout(data);
     }
-
-    graphRef.current = graph;
-
-    let currentHoveredNode: string | null = null;
-
-    const sigma = new Sigma(graph, containerRef.current, {
-      allowInvalidContainer: true,
-      renderEdgeLabels: false,
-      labelColor: { color: "#e2e4eb" },
-      labelSize: 13,
-      labelWeight: "bold",
-      labelFont: "Inter, sans-serif",
-      defaultEdgeType: "arrow",
-      labelRenderedSizeThreshold: 3,
-      zoomToSizeRatioFunction: () => 1,
-      defaultNodeColor: "#6b7280",
-      defaultEdgeColor: "rgba(255,255,255,0.15)",
-      stagePadding: 80,
-      labelDensity: 1.5,
-      labelGridCellSize: 120,
-
-      nodeProgramClasses: {
-        border: NodeBorderProg,
-      },
-      defaultNodeType: "border",
-      edgeProgramClasses: {
-        curvedArrow: EdgeCurvedArrowProgram,
-      },
-
-      nodeReducer: (node, attrs) => {
-        const res = { ...attrs };
-        const activeNode = currentHoveredNode || selectedNodeId;
-
-        if (activeNode && graph.hasNode(activeNode)) {
-          const neighbors = new Set<string>();
-          neighbors.add(activeNode);
-          graph.forEachNeighbor(activeNode, (neighbor) => {
-            neighbors.add(neighbor);
-          });
-
-          if (node === activeNode) {
-            res.highlighted = true;
-            res.zIndex = 2;
-          } else if (neighbors.has(node)) {
-            res.zIndex = 1;
-          } else {
-            res.color = "rgba(100, 100, 120, 0.15)";
-            res.borderColor = "rgba(100, 100, 120, 0.1)";
-            res.label = null;
-            res.zIndex = 0;
-          }
-        }
-
-        return res;
-      },
-
-      edgeReducer: (edge, attrs) => {
-        const res = { ...attrs };
-        const activeNode = currentHoveredNode || selectedNodeId;
-
-        if (activeNode && graph.hasNode(activeNode)) {
-          const source = graph.source(edge);
-          const target = graph.target(edge);
-
-          if (source !== activeNode && target !== activeNode) {
-            res.color = "rgba(255, 255, 255, 0.02)";
-          } else {
-            res.color = "rgba(255, 255, 255, 0.6)";
-            res.size = (attrs.size || 1.5) + 1;
-          }
-        }
-
-        return res;
-      },
-    });
-
-    sigma.on("clickNode", ({ node }) => {
-      onSelectNode(node);
-    });
-
-    sigma.on("doubleClickNode", ({ node }) => {
-      if (viewMode === "cascade") {
-        const nodeData = data.nodes.find((n) => n.id === node);
-        if (nodeData && (nodeData.type === "pillar" || nodeData.type === "strategy")) {
-          onFocusSubtree(node);
-        }
-      }
-    });
-
-    sigma.on("enterNode", ({ node }) => {
-      currentHoveredNode = node;
-      setHoveredNode(node);
-      sigma.refresh();
-    });
-    sigma.on("leaveNode", () => {
-      currentHoveredNode = null;
-      setHoveredNode(null);
-      sigma.refresh();
-    });
-
-    sigma.on("clickStage", () => {
-      onSelectNode(null);
-    });
-
-    sigmaRef.current = sigma;
-
-    return () => {
-      sigma.kill();
-    };
-  }, [data, viewMode]);
-
-  // Handle cross-links visibility
-  useEffect(() => {
-    const graph = graphRef.current;
-    if (!graph) return;
-
-    graph.forEachEdge((edge, attrs) => {
-      if (attrs.edgeType === "cross-link") {
-        graph.setEdgeAttribute(edge, "hidden", viewMode === "cascade" ? !showCrossLinks : false);
-      }
-    });
-
-    sigmaRef.current?.refresh();
-  }, [showCrossLinks, viewMode]);
-
-  // Handle focused subtree (cascade mode only)
-  useEffect(() => {
-    if (viewMode !== "cascade") return;
-    const graph = graphRef.current;
-    const sigma = sigmaRef.current;
-    if (!graph || !sigma) return;
 
     if (focusedSubtree) {
-      const subtreeNodes = getSubtreeNodes(focusedSubtree, data);
-
-      graph.forEachNode((node) => {
-        graph.setNodeAttribute(node, "hidden", !subtreeNodes.has(node));
-      });
-
-      graph.forEachEdge((edge) => {
-        const source = graph.source(edge);
-        const target = graph.target(edge);
-        graph.setEdgeAttribute(edge, "hidden",
-          !subtreeNodes.has(source) || !subtreeNodes.has(target)
-        );
-      });
-
+      const subtreeNodeIds = getSubtreeNodes(focusedSubtree, data);
       const subtreeData: MapData = {
-        nodes: data.nodes.filter((n) => subtreeNodes.has(n.id)),
+        nodes: data.nodes.filter((n) => subtreeNodeIds.has(n.id)),
         edges: data.edges.filter(
-          (e) => subtreeNodes.has(e.source) && subtreeNodes.has(e.target)
+          (e) => subtreeNodeIds.has(e.source) && subtreeNodeIds.has(e.target)
         ),
       };
-      applyCascadeLayout(graph, subtreeData);
-    } else {
-      graph.forEachNode((node) => {
-        graph.setNodeAttribute(node, "hidden", false);
-      });
-      graph.forEachEdge((edge, attrs) => {
-        const isCrossLink = attrs.edgeType === "cross-link";
-        graph.setEdgeAttribute(edge, "hidden", isCrossLink && !showCrossLinks);
-      });
-      applyCascadeLayout(graph, data);
+      return buildCascadeLayout(subtreeData);
     }
 
-    sigma.refresh();
-    sigma.getCamera().animatedReset({ duration: 300 });
-  }, [focusedSubtree, data, showCrossLinks, viewMode]);
+    return buildCascadeLayout(data);
+  }, [data, viewMode, focusedSubtree]);
 
-  // Handle tag highlighting + selection dimming
-  useEffect(() => {
-    const sigma = sigmaRef.current;
-    const graph = graphRef.current;
-    if (!sigma || !graph) return;
-
-    const taggedNodes = new Set<string>();
-    if (highlightedTag) {
-      for (const node of data.nodes) {
-        if (node.tags.includes(highlightedTag)) {
-          taggedNodes.add(node.id);
-        }
-      }
-    }
-
-    sigma.setSetting("nodeReducer", (node: string, attrs: any) => {
-      const res = { ...attrs };
+  const displayNodes = useMemo(() => {
+    return layoutData.nodes.map((node) => {
+      const nodeData = node.data as any;
+      let className = "";
 
       if (highlightedTag) {
-        if (taggedNodes.has(node)) {
-          res.highlighted = true;
-          res.zIndex = 2;
-        } else {
-          res.color = "rgba(100, 100, 120, 0.15)";
-          res.borderColor = "rgba(100, 100, 120, 0.1)";
-          res.label = null;
-          res.zIndex = 0;
+        const nodeTags: string[] = nodeData.tags || [];
+        if (!nodeTags.includes(highlightedTag)) {
+          className = "rf-dimmed";
         }
-        return res;
-      }
-
-      const activeNode = hoveredNode || selectedNodeId;
-      if (activeNode && graph.hasNode(activeNode)) {
-        const neighbors = new Set<string>();
-        neighbors.add(activeNode);
-        graph.forEachNeighbor(activeNode, (neighbor) => {
-          neighbors.add(neighbor);
-        });
-
-        if (node === activeNode) {
-          res.highlighted = true;
-          res.zIndex = 2;
-        } else if (neighbors.has(node)) {
-          res.zIndex = 1;
-        } else {
-          res.color = "rgba(100, 100, 120, 0.15)";
-          res.borderColor = "rgba(100, 100, 120, 0.1)";
-          res.label = null;
-          res.zIndex = 0;
+      } else if (selectedNodeId && selectedNodeId !== node.id) {
+        const isNeighbor = data.edges.some(
+          (e) =>
+            (e.source === selectedNodeId && e.target === node.id) ||
+            (e.target === selectedNodeId && e.source === node.id)
+        );
+        if (!isNeighbor) {
+          className = "rf-dimmed";
         }
       }
 
-      return res;
+      return {
+        ...node,
+        className,
+        selected: node.id === selectedNodeId,
+      };
     });
+  }, [layoutData.nodes, highlightedTag, selectedNodeId, data.edges]);
 
-    sigma.setSetting("edgeReducer", (edge: string, attrs: any) => {
-      const res = { ...attrs };
+  const displayEdges = useMemo(() => {
+    return layoutData.edges.filter((edge) => {
+      const edgeData = edge.data as any;
+      if (edgeData?.edgeType === "cross-link") {
+        return viewMode === "network" || showCrossLinks;
+      }
+      return true;
+    }).map((edge) => {
+      let opacity = 1;
 
       if (highlightedTag) {
-        const source = graph.source(edge);
-        const target = graph.target(edge);
-        if (taggedNodes.has(source) && taggedNodes.has(target)) {
-          res.color = "rgba(255, 255, 255, 0.4)";
-        } else {
-          res.color = "rgba(255, 255, 255, 0.02)";
+        const sourceNode = data.nodes.find((n) => n.id === edge.source);
+        const targetNode = data.nodes.find((n) => n.id === edge.target);
+        const srcHasTag = sourceNode?.tags.includes(highlightedTag);
+        const tgtHasTag = targetNode?.tags.includes(highlightedTag);
+        if (!srcHasTag || !tgtHasTag) {
+          opacity = 0.08;
         }
-        return res;
-      }
-
-      const activeNode = hoveredNode || selectedNodeId;
-      if (activeNode && graph.hasNode(activeNode)) {
-        const source = graph.source(edge);
-        const target = graph.target(edge);
-
-        if (source !== activeNode && target !== activeNode) {
-          res.color = "rgba(255, 255, 255, 0.02)";
-        } else {
-          res.color = "rgba(255, 255, 255, 0.6)";
-          res.size = (attrs.size || 1.5) + 1;
+      } else if (selectedNodeId) {
+        if (edge.source !== selectedNodeId && edge.target !== selectedNodeId) {
+          opacity = 0.08;
         }
       }
 
-      return res;
+      return {
+        ...edge,
+        style: {
+          ...edge.style,
+          opacity,
+        },
+      };
     });
+  }, [layoutData.edges, showCrossLinks, viewMode, highlightedTag, selectedNodeId, data.nodes]);
 
-    sigma.refresh();
-  }, [selectedNodeId, hoveredNode, highlightedTag, data]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(displayNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
+
+  useMemo(() => {
+    setNodes(displayNodes);
+    setEdges(displayEdges);
+  }, [displayNodes, displayEdges, setNodes, setEdges]);
+
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      onSelectNode(node.id);
+    },
+    [onSelectNode]
+  );
+
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      if (viewMode === "cascade") {
+        const nodeData = data.nodes.find((n) => n.id === node.id);
+        if (nodeData && (nodeData.type === "pillar" || nodeData.type === "strategy")) {
+          onFocusSubtree(node.id);
+        }
+      }
+    },
+    [data, viewMode, onFocusSubtree]
+  );
+
+  const onPaneClick = useCallback(() => {
+    onSelectNode(null);
+  }, [onSelectNode]);
 
   return (
     <div className="graph-view">
-      <div className="sigma-container" ref={containerRef} />
-      {hoveredNode && (
-        <div className="graph-tooltip">
-          {data.nodes.find((n) => n.id === hoveredNode)?.title}
-        </div>
-      )}
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
+        onPaneClick={onPaneClick}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.1}
+        maxZoom={2}
+        nodesDraggable={viewMode === "network"}
+        proOptions={{ hideAttribution: true }}
+        defaultEdgeOptions={{
+          type: "smoothstep",
+        }}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={30} size={1} color="rgba(255,255,255,0.06)" />
+        <Controls showInteractive={false} />
+        <MiniMap
+          nodeColor={(node) => {
+            const d = node.data as any;
+            if (d.nodeType === "goal") return "#f59e0b";
+            if (d.nodeType === "pillar") return "#3b82f6";
+            return STATUS_COLORS[d.status as keyof typeof STATUS_COLORS] || "#6b7280";
+          }}
+          maskColor="rgba(15, 17, 23, 0.8)"
+          style={{ background: "#1a1d27", borderColor: "#2a2e3d" }}
+        />
+      </ReactFlow>
+
       {focusedSubtree && viewMode === "cascade" && (
         <button className="back-btn" onClick={() => onFocusSubtree(null)}>
           \u2190 Back to full map
