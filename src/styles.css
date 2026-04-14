@@ -35,7 +35,7 @@ body {
   height: 100vh;
 }
 
-/* ── Top Bar ── */
+/* \u2500\u2500 Top Bar \u2500\u2500 */
 .topbar {
   height: 52px;
   background: var(--surface);
@@ -139,14 +139,14 @@ body {
   background: rgba(34, 197, 94, 0.1);
 }
 
-/* ── Layout ── */
+/* \u2500\u2500 Layout \u2500\u2500 */
 .layout {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* ── Sidebar ── */
+/* \u2500\u2500 Sidebar \u2500\u2500 */
 .sidebar {
   width: var(--sidebar-width);
   background: var(--surface);
@@ -216,34 +216,133 @@ body {
   flex: 1;
 }
 
-/* ── Graph View ── */
+/* \u2500\u2500 Graph View \u2500\u2500 */
 .graph-view {
   flex: 1;
   position: relative;
-  background:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.03) 1px, transparent 0);
-  background-size: 30px 30px;
 }
 
-.sigma-container {
-  position: absolute;
-  inset: 0;
-}
-
-.graph-tooltip {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+/* \u2500\u2500 ReactFlow Node Cards \u2500\u2500 */
+.rf-node {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
+  border-radius: 8px;
+  padding: 12px 16px;
   color: var(--text);
-  pointer-events: none;
-  z-index: 50;
-  white-space: nowrap;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: box-shadow 0.15s, opacity 0.15s;
+}
+
+.rf-node:hover {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.rf-node-goal {
+  border: 2px solid var(--accent-orange);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), var(--surface));
+  text-align: center;
+}
+
+.rf-node-goal .rf-node-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-orange);
+}
+
+.rf-node-pillar {
+  border: 2px solid var(--accent-blue);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), var(--surface));
+}
+
+.rf-node-pillar .rf-node-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rf-node-strategy {
+  border-left: 3px solid var(--accent-orange);
+}
+
+.rf-node-strategy .rf-node-title {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.rf-node-intervention {
+  border-left: 3px solid var(--accent-red);
+  padding: 8px 12px;
+}
+
+.rf-node-intervention .rf-node-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.rf-node-badge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fff;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.rf-node-title {
+  line-height: 1.4;
+}
+
+.rf-dimmed .rf-node {
+  opacity: 0.15;
+}
+
+.selected .rf-node {
+  box-shadow: 0 0 0 2px var(--accent-blue), 0 4px 16px rgba(59, 130, 246, 0.25);
+}
+
+/* ReactFlow dark theme overrides */
+.react-flow__controls {
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.react-flow__controls button {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+  fill: var(--text-muted) !important;
+}
+
+.react-flow__controls button:hover {
+  background: var(--surface-hover) !important;
+}
+
+.react-flow__controls svg {
+  fill: var(--text-muted) !important;
+}
+
+.react-flow__handle {
+  width: 6px !important;
+  height: 6px !important;
+  background: var(--border) !important;
+  border: none !important;
+  opacity: 0;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+.react-flow__minimap {
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
 }
 
 .back-btn {
@@ -266,7 +365,7 @@ body {
   background: var(--surface-hover);
 }
 
-/* ── Legend ── */
+/* \u2500\u2500 Legend \u2500\u2500 */
 .legend {
   position: absolute;
   bottom: 16px;
@@ -326,7 +425,7 @@ body {
   white-space: nowrap;
 }
 
-/* ── Detail Panel ── */
+/* \u2500\u2500 Detail Panel \u2500\u2500 */
 .detail-panel {
   width: var(--detail-width);
   background: var(--surface);
@@ -416,7 +515,7 @@ body {
   background: rgba(59, 130, 246, 0.2);
 }
 
-/* ── Badges ── */
+/* \u2500\u2500 Badges \u2500\u2500 */
 .node-badge {
   font-size: 9px;
   padding: 3px 8px;
@@ -452,7 +551,7 @@ body {
   color: #6b7280;
 }
 
-/* ── Research Questions ── */
+/* \u2500\u2500 Research Questions \u2500\u2500 */
 .research-q {
   padding: 8px 12px;
   background: var(--bg);
@@ -463,7 +562,7 @@ body {
   border-left: 2px solid var(--accent-teal);
 }
 
-/* ── Resources ── */
+/* \u2500\u2500 Resources \u2500\u2500 */
 .resource-item {
   display: flex;
   align-items: center;
@@ -493,7 +592,7 @@ body {
   text-decoration: underline;
 }
 
-/* ── People ── */
+/* \u2500\u2500 People \u2500\u2500 */
 .person-item {
   display: flex;
   align-items: center;
@@ -531,7 +630,7 @@ body {
   color: var(--text-muted);
 }
 
-/* ── Child nodes ── */
+/* \u2500\u2500 Child nodes \u2500\u2500 */
 .child-node-item {
   display: flex;
   align-items: center;
@@ -547,7 +646,7 @@ body {
   color: var(--accent-blue);
 }
 
-/* ── Add buttons ── */
+/* \u2500\u2500 Add buttons \u2500\u2500 */
 .add-btn {
   display: flex;
   align-items: center;
@@ -570,14 +669,14 @@ body {
   color: var(--accent-blue);
 }
 
-/* ── Detail Tags ── */
+/* \u2500\u2500 Detail Tags \u2500\u2500 */
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-/* ── Tag Groups (Network sidebar) ── */
+/* \u2500\u2500 Tag Groups (Network sidebar) \u2500\u2500 */
 .tag-group {
   margin-bottom: 2px;
 }
@@ -618,7 +717,7 @@ body {
   /* inherits tree-node styles */
 }
 
-/* ── Scrollbar ── */
+/* \u2500\u2500 Scrollbar \u2500\u2500 */
 ::-webkit-scrollbar {
   width: 6px;
 }
