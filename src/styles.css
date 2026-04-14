@@ -225,6 +225,11 @@ body {
   background-size: 30px 30px;
 }
 
+.sigma-container {
+  position: absolute;
+  inset: 0;
+}
+
 .graph-tooltip {
   position: absolute;
   top: 16px;

@@ -172,7 +172,6 @@ export default function GraphView({
 
     graph.forEachEdge((edge, attrs) => {
       if (attrs.edgeType === "cross-link") {
-        // In network mode, always show cross-links
         graph.setEdgeAttribute(edge, "hidden", viewMode === "cascade" ? !showCrossLinks : false);
       }
     });
@@ -230,7 +229,6 @@ export default function GraphView({
     const graph = graphRef.current;
     if (!sigma || !graph) return;
 
-    // Build set of node IDs matching the highlighted tag
     const taggedNodes = new Set<string>();
     if (highlightedTag) {
       for (const node of data.nodes) {
@@ -243,7 +241,6 @@ export default function GraphView({
     sigma.setSetting("nodeReducer", (node: string, attrs: any) => {
       const res = { ...attrs };
 
-      // Tag highlighting takes priority
       if (highlightedTag) {
         if (taggedNodes.has(node)) {
           res.highlighted = true;
@@ -257,7 +254,6 @@ export default function GraphView({
         return res;
       }
 
-      // Node hover/selection highlighting
       const activeNode = hoveredNode || selectedNodeId;
       if (activeNode && graph.hasNode(activeNode)) {
         const neighbors = new Set<string>();
@@ -316,7 +312,8 @@ export default function GraphView({
   }, [selectedNodeId, hoveredNode, highlightedTag, data]);
 
   return (
-    <div className="graph-view" ref={containerRef}>
+    <div className="graph-view">
+      <div className="sigma-container" ref={containerRef} />
       {hoveredNode && (
         <div className="graph-tooltip">
           {data.nodes.find((n) => n.id === hoveredNode)?.title}
@@ -324,7 +321,7 @@ export default function GraphView({
       )}
       {focusedSubtree && viewMode === "cascade" && (
         <button className="back-btn" onClick={() => onFocusSubtree(null)}>
-          ← Back to full map
+          \u2190 Back to full map
         </button>
       )}
       <Legend />
