@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catalyse Map — Design Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-hover: #232736;
+      --border: #2a2e3d;
+      --text: #e2e4eb;
+      --text-muted: #8b8fa3;
+      --accent-orange: #f59e0b;
+      --accent-green: #22c55e;
+      --accent-blue: #3b82f6;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --accent-teal: #14b8a6;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 16px; }
+    .topbar-logo { font-size: 18px; font-weight: 700; color: var(--accent-orange); }
+    .topbar-subtitle { font-size: 12px; color: var(--text-muted); }
+    .topbar-controls { display: flex; gap: 8px; align-items: center; }
+    .search-input {
+      padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 12px; width: 200px;
+      outline: none; font-family: inherit;
+    }
+    .btn {
+      padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); font-size: 12px;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .btn:hover { background: var(--surface-hover); color: var(--text); }
+    .btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    .btn-green { color: var(--accent-green); border-color: var(--accent-green); }
+    .view-toggle { display: flex; }
+    .view-toggle .btn { border-radius: 0; border-right-width: 0; }
+    .view-toggle .btn:first-child { border-radius: 6px 0 0 6px; }
+    .view-toggle .btn:last-child { border-radius: 0 6px 6px 0; border-right-width: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 320px; background: var(--surface); border-right: 1px solid var(--border);
+      overflow-y: auto; padding: 16px 0; flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 0 16px 12px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+    }
+    .tree-item {
+      padding: 6px 16px; font-size: 13px; display: flex; align-items: center;
+      gap: 8px; cursor: pointer; transition: background 0.1s;
+    }
+    .tree-item:hover { background: var(--surface-hover); }
+    .tree-item.selected { background: rgba(59, 130, 246, 0.12); }
+    .tree-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .tree-item .arrow { color: var(--text-muted); font-size: 8px; width: 12px; }
+    .tree-indent-1 { padding-left: 32px; }
+    .tree-indent-2 { padding-left: 48px; }
+    .tree-indent-3 { padding-left: 64px; }
+
+    /* ── Graph Canvas ── */
+    .canvas {
+      flex: 1; position: relative; overflow: hidden;
+      background: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+      background-size: 30px 30px;
+    }
+    .canvas-content {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -45%) scale(0.7);
+      display: flex; flex-direction: column; align-items: center; gap: 40px;
+    }
+
+    /* ── Node Cards ── */
+    .node {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 16px; cursor: pointer; transition: box-shadow 0.15s;
+      position: relative;
+    }
+    .node:hover { box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 4px 16px rgba(0,0,0,0.3); }
+    .node-goal {
+      border: 2px solid var(--accent-orange);
+      background: linear-gradient(135deg, rgba(245,158,11,0.08), var(--surface));
+      text-align: center; width: 320px;
+    }
+    .node-goal .node-title { font-size: 15px; font-weight: 700; color: var(--accent-orange); }
+    .node-pillar {
+      border: 2px solid var(--accent-blue);
+      background: linear-gradient(135deg, rgba(59,130,246,0.08), var(--surface));
+      width: 260px;
+    }
+    .node-pillar .node-title { font-size: 13px; font-weight: 600; }
+    .node-strategy { border-left: 3px solid var(--accent-orange); width: 240px; }
+    .node-strategy .node-title { font-size: 12px; font-weight: 500; }
+    .node-intervention { border-left: 3px solid var(--accent-red); width: 220px; padding: 8px 12px; }
+    .node-intervention .node-title { font-size: 11px; color: var(--text-muted); }
+
+    .node-badge {
+      font-size: 9px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.03em; padding: 2px 8px; border-radius: 4px;
+      color: #fff; display: inline-block; margin-bottom: 6px;
+    }
+    .node-title { line-height: 1.4; }
+
+    /* ── Rows ── */
+    .row { display: flex; gap: 24px; align-items: flex-start; justify-content: center; }
+
+    /* ── Detail Panel ── */
+    .detail {
+      width: 400px; background: var(--surface); border-left: 1px solid var(--border);
+      overflow-y: auto; padding: 24px; flex-shrink: 0;
+    }
+    .detail-type { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .detail-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .detail-section { margin-bottom: 20px; }
+    .detail-section-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .detail-desc { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+    .research-q {
+      padding: 8px 12px; background: var(--bg); border-radius: 6px;
+      margin-bottom: 6px; font-size: 12px; line-height: 1.5;
+      border-left: 2px solid var(--accent-teal);
+    }
+    .tag-pill {
+      font-size: 11px; font-weight: 600; padding: 2px 10px;
+      border-radius: 10px; color: #fff; display: inline-block; margin-right: 4px; margin-bottom: 4px;
+    }
+    .add-btn {
+      padding: 8px 12px; border: 1px dashed var(--border); border-radius: 6px;
+      background: transparent; color: var(--text-muted); font-size: 12px;
+      cursor: pointer; width: 100%; margin-top: 8px; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .add-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+
+    .count {
+      background: var(--bg); padding: 1px 6px; border-radius: 4px; font-size: 10px;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(26,29,39,0.92); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px; display: flex; gap: 20px;
+      backdrop-filter: blur(8px);
+    }
+    .legend-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .legend-circle { border-radius: 50%; flex-shrink: 0; }
+    .legend-label { font-size: 11px; color: var(--text-muted); }
+
+    /* ── Minimap ── */
+    .minimap {
+      position: absolute; bottom: 16px; right: 16px;
+      width: 160px; height: 100px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; opacity: 0.8;
+    }
+    .minimap-inner {
+      width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+      font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">Catalyse Map</div>
+      <div class="topbar-subtitle">AI Pause Interventions</div>
+    </div>
+    <div class="topbar-controls">
+      <input class="search-input" placeholder="Search interventions..." />
+      <div class="view-toggle">
+        <button class="btn active">Cascade</button>
+        <button class="btn">Network</button>
+      </div>
+      <button class="btn">Cross-links</button>
+      <button class="btn btn-green">+ Add node</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">Intervention Tree</div>
+      <div class="tree-item selected">
+        <span class="arrow">&#9654;</span>
+        <span class="dot" style="background:#6b7280"></span>
+        <span>Globally endorsed & enforced 10yr+ AI Pause</span>
+      </div>
+      <div class="tree-item tree-indent-1">
+        <span class="arrow">&#9654;</span>
+        <span class="dot" style="background:#f59e0b"></span>
+        <span>Enforced International Treaty</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#f59e0b"></span>
+        <span>Advance policy prospects</span>
+      </div>
+      <div class="tree-item tree-indent-1">
+        <span class="arrow">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Buy-in from global populations</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Messaging & framing</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Community organising</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#f59e0b"></span>
+        <span>Funnel talented people</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Neglected regions: Asia & Africa</span>
+      </div>
+      <div class="tree-item tree-indent-1">
+        <span class="arrow">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Economic incentives changed</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#a855f7"></span>
+        <span>Burst the AI bubble</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Rebranding the pause</span>
+      </div>
+      <div class="tree-item tree-indent-2">
+        <span class="arrow">&#9654;</span>
+        <span class="dot" style="background:#a855f7"></span>
+        <span>Union organising in AI labs</span>
+      </div>
+      <div class="tree-item tree-indent-3">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Write pro-union piece</span>
+      </div>
+      <div class="tree-item tree-indent-3">
+        <span class="arrow" style="visibility:hidden">&#9654;</span>
+        <span class="dot" style="background:#ef4444"></span>
+        <span>Union strikes for pause</span>
+      </div>
+    </div>
+
+    <!-- Graph Canvas -->
+    <div class="canvas">
+      <div class="canvas-content">
+        <div class="row">
+          <div class="node node-goal">
+            <div class="node-title">Globally endorsed & enforced 10yr+ AI Pause</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="node node-pillar">
+            <div class="node-badge" style="background:#f59e0b">In progress</div>
+            <div class="node-title">Enforced International Treaty</div>
+          </div>
+          <div class="node node-pillar">
+            <div class="node-badge" style="background:#ef4444">Neglected</div>
+            <div class="node-title">Buy-in from global populations</div>
+          </div>
+          <div class="node node-pillar">
+            <div class="node-badge" style="background:#ef4444">Neglected</div>
+            <div class="node-title">Economic incentives changed</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="node node-strategy" style="border-left-color:#f59e0b">
+            <div class="node-badge" style="background:#f59e0b">In progress</div>
+            <div class="node-title">Advance policy prospects</div>
+          </div>
+          <div class="node node-strategy" style="border-left-color:#ef4444">
+            <div class="node-badge" style="background:#ef4444">Neglected</div>
+            <div class="node-title">Messaging & framing</div>
+          </div>
+          <div class="node node-strategy" style="border-left-color:#ef4444">
+            <div class="node-badge" style="background:#ef4444">Neglected</div>
+            <div class="node-title">Community organising</div>
+          </div>
+          <div class="node node-strategy" style="border-left-color:#a855f7">
+            <div class="node-badge" style="background:#a855f7">Unfunded</div>
+            <div class="node-title">Burst the AI bubble</div>
+          </div>
+          <div class="node node-strategy" style="border-left-color:#a855f7">
+            <div class="node-badge" style="background:#a855f7">Unfunded</div>
+            <div class="node-title">Union organising in AI labs</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="node node-intervention" style="border-left-color:#ef4444">
+            <div class="node-title">Rebrand pause: more 'climate change', less 'antivax'</div>
+          </div>
+          <div class="node node-intervention" style="border-left-color:#ef4444">
+            <div class="node-title">Mobilise communities around job losses</div>
+          </div>
+          <div class="node node-intervention" style="border-left-color:#ef4444">
+            <div class="node-title">Show companies they're wasting money on AI</div>
+          </div>
+          <div class="node node-intervention" style="border-left-color:#ef4444">
+            <div class="node-title">Write piece making lab members think a union is good</div>
+          </div>
+          <div class="node node-intervention" style="border-left-color:#ef4444">
+            <div class="node-title">Union strikes for a conditional pause agreement</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <div>
+          <div class="legend-title">Node Types</div>
+          <div class="legend-item"><span class="legend-circle" style="width:12px;height:12px;border:2px solid #f59e0b"></span><span class="legend-label">Goal</span></div>
+          <div class="legend-item"><span class="legend-circle" style="width:10px;height:10px;border:2px solid #3b82f6"></span><span class="legend-label">Pillar</span></div>
+          <div class="legend-item"><span class="legend-circle" style="width:8px;height:8px;border:2px solid #e2e4eb"></span><span class="legend-label">Strategy</span></div>
+          <div class="legend-item"><span class="legend-circle" style="width:6px;height:6px;border:2px solid #e2e4eb"></span><span class="legend-label">Intervention</span></div>
+        </div>
+        <div>
+          <div class="legend-title">Status</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span><span class="legend-label">Well-covered</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span><span class="legend-label">In-progress</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span><span class="legend-label">Neglected</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:#a855f7"></span><span class="legend-label">Unfunded</span></div>
+        </div>
+      </div>
+
+      <div class="minimap"><div class="minimap-inner">Minimap</div></div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div class="detail">
+      <div class="detail-type">Goal</div>
+      <div class="detail-title">Globally endorsed & enforced 10yr+ AI Pause</div>
+
+      <div class="detail-section">
+        <span class="node-badge" style="background:rgba(107,114,128,0.15);color:#6b7280">Unknown</span>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Tags</div>
+        <span class="tag-pill" style="background:#3b82f6">policy</span>
+        <span class="tag-pill" style="background:#f97316">coalition-building</span>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Description</div>
+        <div class="detail-desc">A globally endorsed and enforced 10 year+ pause on frontier AI/ASI research, with deep public and institutional buy-in. Key components: (1) add friction to buy time, (2) channel things in the right direction for pause tractability, buy-in and ease of implementation.</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Research Questions <span class="count">2</span></div>
+        <div class="research-q">What does 'frontier AI' actually mean in a treaty context — where is the line?</div>
+        <div class="research-q">What are the most plausible enforcement mechanisms for a global pause?</div>
+        <button class="add-btn">+ Add a research question</button>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Resources <span class="count">0</span></div>
+        <button class="add-btn">+ Add a resource</button>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Who's on this <span class="count">0</span></div>
+        <button class="add-btn">+ I'm working on this</button>
+        <button class="add-btn">+ I know someone working on this</button>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Child nodes <span class="count">3</span></div>
+        <div class="tree-item" style="padding-left:0">
+          <span class="dot" style="background:#f59e0b"></span>
+          <span>Enforced International Treaty</span>
+        </div>
+        <div class="tree-item" style="padding-left:0">
+          <span class="dot" style="background:#ef4444"></span>
+          <span>Buy-in from global populations</span>
+        </div>
+        <div class="tree-item" style="padding-left:0">
+          <span class="dot" style="background:#ef4444"></span>
+          <span>Economic incentives changed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
